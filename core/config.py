@@ -34,7 +34,6 @@ class Project:
     category: str
     competitors: list[Brand]
     queries: list[str]
-    location: dict | None
 
     @property
     def db_path(self) -> Path:
@@ -96,7 +95,6 @@ def load_project(name_or_path: str) -> Project:
         category=raw["category"],
         competitors=[_parse_brand(c) for c in raw.get("competitors") or []],
         queries=list(dict.fromkeys(queries)),  # drop exact duplicates, keep order
-        location=raw.get("location") or None,
     )
 
 

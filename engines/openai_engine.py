@@ -48,9 +48,6 @@ class OpenAIEngine(Engine):
             tool: dict = {"type": "web_search"}
             if self.config.get("search_context_size"):
                 tool["search_context_size"] = self.config["search_context_size"]
-            location = _location(self.location)
-            if location:
-                tool["user_location"] = location
             body["tools"] = [tool]
             # Also return every URL the search looked at, not just the cited ones
             body["include"] = ["web_search_call.action.sources"]
@@ -119,11 +116,3 @@ class OpenAIEngine(Engine):
             latency_ms=latency_ms,
             raw=data,
         )
-
-
-def _location(loc: dict | None) -> dict | None:
-    """OpenAI wants {"type": "approximate", country, region, city, timezone}."""
-    if not loc:
-        return None
-    fields = {k: loc[k] for k in ("country", "region", "city", "timezone") if loc.get(k)}
-    return {"type": "approximate", **fields} if fields else None

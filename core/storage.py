@@ -10,7 +10,6 @@ paid for. See Engine.cache_key().
 """
 from __future__ import annotations
 
-import csv
 import json
 import sqlite3
 from datetime import datetime, timezone
@@ -181,37 +180,5 @@ class Store:
                FROM responses GROUP BY engine ORDER BY engine"""
         ).fetchall()
 
-    def export_csv(self, out_dir: Path, prefix: str) -> list[Path]:
-        """Write responses and citations to CSV (UTF-8 with BOM so Excel reads it correctly)."""
-        out_dir.mkdir(parents=True, exist_ok=True)
-        responses_path = out_dir / f"{prefix}_responses.csv"
-        citations_path = out_dir / f"{prefix}_citations.csv"
-
-        rows = self.conn.execute(
-            """SELECT r.id, r.run_id, r.created_at, r.engine, r.model, r.query, r.answer_text,
-                      r.input_tokens, r.output_tokens, r.search_calls, r.cost_usd, r.cost_source,
-                      r.latency_ms,
-                      (SELECT GROUP_CONCAT(url, ' | ') FROM citations c
-                        WHERE c.response_id = r.id AND c.cited_in_text = 1) AS cited_urls
-               FROM responses r ORDER BY r.id"""
-        ).fetchall()
-        _write_csv(responses_path, rows)
-
-        rows = self.conn.execute(
-            """SELECT c.response_id, r.engine, r.query, c.position, c.domain, c.url, c.title, c.cited_in_text
-               FROM citations c JOIN responses r ON r.id = c.response_id
-               ORDER BY c.response_id, c.position"""
-        ).fetchall()
-        _write_csv(citations_path, rows)
-        return [responses_path, citations_path]
-
     def close(self) -> None:
         self.conn.close()
-
-
-def _write_csv(path: Path, rows: list[sqlite3.Row]) -> None:
-    with open(path, "w", newline="", encoding="utf-8-sig") as f:
-        writer = csv.writer(f)
-        if rows:
-            writer.writerow(rows[0].keys())
-            writer.writerows([tuple(r) for r in rows])

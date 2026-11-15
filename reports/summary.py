@@ -1,18 +1,10 @@
-"""Write 3 key findings and 3 recommendations from the metrics.
+"""Write 3 key findings and 3 recommendations from the metrics, using fixed rules.
 
-Two ways, so the report always has a summary:
-  1. rule_based_summary(): deterministic text built straight from the numbers.
-     Free, and every sentence can be traced to a metric.
-  2. llm_summary(): a cheap model rewrites it from the metrics JSON, giving
-     more natural wording. Falls back to (1) if no key is set or the call fails.
+Deterministic and free: every sentence can be traced back to a metric.
 """
 from __future__ import annotations
 
-import json
-import re
 from collections import Counter
-
-from engines import Engine, EngineError
 
 
 def pct(x: float | None) -> str:
@@ -79,78 +71,21 @@ def rule_based_summary(report: dict) -> dict:
     if gaps:
         examples = "; ".join(f'"{g["query"]}"' for g in gaps[:2])
         recs.append(
-            f"Publish pages that directly answer the gap queries (e.g. {examples}) with clear facts "
-            f"(locations, prices, team sizes, comparisons), so engines have {brand} content to cite."
+            f"Publish pages that directly answer the gap queries (e.g. {examples}) with clear, specific "
+            f"facts buyers compare on (features, pricing, who it's for, how it compares), so engines "
+            f"have {brand} content to cite."
         )
     else:
         recs.append("Expand the query set to more specific buyer needs to find where visibility drops.")
 
-    # Recommendation 3: own site citations / weakest engine
-    own = overall["own_site_cited_rate"]
-    if own is not None and own < 0.2:
-        recs.append(
-            f"{brand}'s own site is cited in only {pct(own)} of answers. Add FAQ, pricing and "
-            "location pages with structured data so engines can quote it directly."
-        )
-    elif len(ranked) > 1:
+    # Recommendation 3: weakest engine
+    if len(ranked) > 1:
         worst = ranked[-1][0]
         recs.append(f"Focus on {worst}, the weakest engine: study the sources it cites and target them first.")
     else:
         recs.append("Add more engines (API keys) to compare visibility across platforms.")
 
-    return {"findings": findings[:3], "recommendations": recs[:3], "source": "rules"}
-
-
-LLM_PROMPT = """You are an Answer Engine Optimization (AEO) analyst. Below are metrics
-measuring how the brand "{brand}" appears in AI assistant answers for "{category}".
-
-METRICS (JSON):
-{metrics}
-
-Definitions: mention_rate = share of answers naming the brand; avg_position = rank
-of the brand among brands named (1 = first); share_of_voice = brand mentions / all
-brand mentions; opportunity_gaps = queries where competitors appear but the brand doesn't.
-
-Write exactly 3 key findings and 3 concrete, actionable recommendations for the
-{brand} marketing team. Use specific numbers, engines, competitors, domains and
-queries from the metrics. Each item is one or two sentences. Do not invent data.
-
-Reply with ONLY this JSON:
-{{"findings": ["...", "...", "..."], "recommendations": ["...", "...", "..."]}}"""
-
-
-async def llm_summary(utility: Engine, report: dict) -> tuple[dict, float]:
-    """Returns (summary, cost). Raises EngineError/ValueError on failure so the caller can fall back."""
-    slim = {k: v for k, v in report.items() if k not in ("query_grid", "brand_engine_matrix")}
-    slim["opportunity_gaps"] = slim["opportunity_gaps"][:8]
-    prompt = LLM_PROMPT.format(
-        brand=report["brand"], category=report["category"], metrics=json.dumps(slim, indent=1, default=str)
-    )
-    try:
-        resp = await utility.ask(prompt)
-    finally:
-        await utility.aclose()
-    match = re.search(r"\{.*\}", resp.answer_text, re.DOTALL)
-    if not match:
-        raise ValueError("model did not return JSON")
-    data = json.loads(match.group(0))
-    findings, recs = data.get("findings") or [], data.get("recommendations") or []
-    if len(findings) < 3 or len(recs) < 3:
-        raise ValueError("model returned fewer than 3 findings/recommendations")
-    return {
-        "findings": [str(f) for f in findings[:3]],
-        "recommendations": [str(r) for r in recs[:3]],
-        "source": f"llm:{resp.model}",
-    }, resp.cost_usd
-
-
-async def write_summary(utility: Engine | None, report: dict) -> tuple[dict, float]:
-    if utility is None or not report["responses"]:
-        return rule_based_summary(report), 0.0
-    try:
-        return await llm_summary(utility, report)
-    except (EngineError, ValueError, json.JSONDecodeError):
-        return rule_based_summary(report), 0.0
+    return {"findings": findings[:3], "recommendations": recs[:3]}
 
 
 def _most_common(items: list[str]) -> str:

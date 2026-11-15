@@ -25,13 +25,13 @@ from rich.console import Console
 from rich.table import Table
 
 from analysis.pipeline import analyze_project
-from core.config import BASE_DIR, DATA_DIR, Project, load_project, load_settings, save_queries
+from core.config import BASE_DIR, Project, load_project, load_settings, save_queries
 from core.query_generator import generate_queries, merge_queries
 from core.runner import EngineStats, Job, execute, plan_jobs
 from core.storage import Store
 from engines import ENGINE_CLASSES, EngineError, EngineResponse, build_utility_engine, load_engines
 from reports.html_report import render_report
-from reports.summary import pct, write_summary
+from reports.summary import pct, rule_based_summary
 
 REPORTS_DIR = BASE_DIR / "reports" / "output"
 
@@ -65,7 +65,6 @@ def run(
         str | None, typer.Option(help="Comma-separated engines, e.g. 'perplexity'. Default: all enabled")
     ] = None,
     max_queries: Annotated[int | None, typer.Option(min=1, help="Only send the first N queries (caps spend)")] = None,
-    refresh: Annotated[bool, typer.Option(help="Ignore the cache and re-query (costs money)")] = False,
     dry_run: Annotated[bool, typer.Option(help="Show planned calls and estimated cost; send nothing")] = False,
 ) -> None:
     """Send the project's queries to each AI engine and store the answers."""
@@ -76,7 +75,7 @@ def run(
         raise typer.Exit(1)
 
     names = [n.strip() for n in engines.split(",")] if engines else None
-    engine_list, warnings = load_engines(settings, names, proj.location, require_key=not dry_run)
+    engine_list, warnings = load_engines(settings, names, require_key=not dry_run)
     for warning in warnings:
         console.print(f"[yellow]WARNING: {warning}[/yellow]")
     if not engine_list:
@@ -84,14 +83,14 @@ def run(
         raise typer.Exit(1)
 
     store = Store(proj.db_path)
-    jobs, stats = plan_jobs(engine_list, queries, store, refresh)
+    jobs, stats = plan_jobs(engine_list, queries, store)
     _print_plan(proj, engine_list, stats, len(queries), dry_run)
 
     if dry_run:
         console.print("\n[dim]Dry run: no API calls made.[/dim]")
         return
     if not jobs:
-        console.print("\nEverything is cached. Use [bold]--refresh[/bold] to re-query.")
+        console.print("\nEverything is cached: every query already has an answer for these engines.")
         return
 
     run_id = store.start_run([e.name for e in engine_list])
@@ -129,10 +128,7 @@ def run(
     store.finish_run(run_id, totals.called, totals.cached, totals.failed, totals.cost_usd)
 
     _print_costs(stats)
-    paths = store.export_csv(DATA_DIR / "exports", proj.key)
-    console.print(f"\nSaved to [bold]{proj.db_path.relative_to(BASE_DIR)}[/bold]; CSV export:")
-    for path in paths:
-        console.print(f"  {path.relative_to(BASE_DIR)}")
+    console.print(f"\nSaved to [bold]{proj.db_path.relative_to(BASE_DIR)}[/bold]")
     store.close()
     console.print("\nNext: [bold]py AI_Visibility.py report[/bold] to analyse and build the HTML report.")
     if totals.failed:
@@ -212,7 +208,7 @@ def _print_metrics(report: dict) -> None:
         return "n/a" if x is None else f"#{x:.1f}"
 
     table = Table(title=f"Visibility of {report['brand']}")
-    for col in ("Engine", "Answers", "Mention rate", "Avg position", "First-mention", "Own site cited", "Sentiment +/=/-"):
+    for col in ("Engine", "Answers", "Mention rate", "Avg position", "Sentiment +/=/-"):
         table.add_column(col, justify="left" if col == "Engine" else "right")
     rows = [(e, report["per_engine"][e]) for e in report["engines"]] + [("ALL", report["overall"])]
     for name, m in rows:
@@ -221,7 +217,6 @@ def _print_metrics(report: dict) -> None:
         s = m["sentiment"]
         table.add_row(
             name, str(m["responses"]), pct(m["mention_rate"]), pos(m["avg_position"]),
-            pct(m["first_mention_rate"]), pct(m["own_site_cited_rate"]),
             f"{s['positive']}/{s['neutral']}/{s['negative']}",
         )
     console.print(table)
@@ -258,21 +253,11 @@ def analyze(
 def report(
     project: ProjectOpt = "myhq",
     sentiment: Annotated[bool, typer.Option(help="Score sentiment with the cheap utility model")] = True,
-    llm_summary: Annotated[bool, typer.Option(help="Let a cheap model word the findings (else rule-based)")] = True,
 ) -> None:
     """Analyse stored answers and write a self-contained HTML report."""
     proj, settings = _load(project)
     metrics = _analyze(proj, settings, sentiment)
-
-    utility = None
-    if llm_summary:
-        try:
-            utility = build_utility_engine(settings)
-        except EngineError as exc:
-            console.print(f"[yellow]WARNING: {exc}. Using the rule-based summary.[/yellow]")
-    summary, cost = asyncio.run(write_summary(utility, metrics))
-    if cost:
-        console.print(f"Summary cost: ${cost:.4f}")
+    summary = rule_based_summary(metrics)
 
     store = Store(proj.db_path)
     costs = [dict(row) for row in store.spend_by_engine()]
@@ -328,7 +313,38 @@ def generate_queries_cmd(
 
 
 # ---------------------------------------------------------------------------
-# status / export
+# full: everything in one go
+# ---------------------------------------------------------------------------
+
+
+@app.command()
+def full(
+    project: ProjectOpt = "myhq",
+    generate: Annotated[
+        int, typer.Option(min=0, max=50, help="First generate this many new queries (0 = use the config as is)")
+    ] = 0,
+    replace: Annotated[bool, typer.Option(help="With --generate: replace existing queries instead of adding")] = False,
+    engines: Annotated[str | None, typer.Option(help="Comma-separated engines. Default: all with keys")] = None,
+    max_queries: Annotated[int | None, typer.Option(min=1, help="Only send the first N queries (caps spend)")] = None,
+    sentiment: Annotated[bool, typer.Option(help="Score sentiment with the cheap utility model")] = True,
+) -> None:
+    """Generate queries (optional), ask the engines, then build the report, in one command."""
+    if generate:
+        console.rule("1. Generate queries")
+        generate_queries_cmd(project=project, count=max(generate, 5), replace=replace)
+    console.rule("2. Ask the engines")
+    try:
+        run(project=project, engines=engines, max_queries=max_queries, dry_run=False)
+    except typer.Exit as exc:
+        if exc.exit_code != 2:  # 2 = some queries failed; still report on the rest
+            raise
+        console.print("[yellow]Some queries failed (they'll be retried next run). Building the report anyway.[/yellow]")
+    console.rule("3. Build the report")
+    report(project=project, sentiment=sentiment)
+
+
+# ---------------------------------------------------------------------------
+# status
 # ---------------------------------------------------------------------------
 
 
@@ -366,16 +382,6 @@ def status(project: ProjectOpt = "myhq") -> None:
             f"{row['output_tokens'] or 0:,}", f"${row['cost'] or 0:.4f}",
         )
     console.print(spend)
-    store.close()
-
-
-@app.command()
-def export(project: ProjectOpt = "myhq") -> None:
-    """Export all stored responses and citations to CSV."""
-    proj, _ = _load(project)
-    store = Store(proj.db_path)
-    for path in store.export_csv(DATA_DIR / "exports", proj.key):
-        console.print(f"Wrote {path.relative_to(BASE_DIR)}")
     store.close()
 
 

@@ -50,7 +50,6 @@ engines:
     max_searches: 5                # cap on searches per answer
     effort: medium                 # low | medium | high | xhigh | max
     max_tokens: 16000
-    fallbacks: default             # on a safety refusal, retry on a fallback model in the same call
     pricing:
       input_per_mtok: 4.00         # search results are billed as input tokens
       output_per_mtok: 20.00
@@ -65,6 +64,12 @@ engines:
     endpoint: https://generativelanguage.googleapis.com/v1beta/models
     model: gemini-3.8-flash
     web_search: true               # Grounding with Google Search
+    # Gemini decides on its own whether to search and often skips it for evergreen
+    # questions, answering from memory with no sources. This makes it search first.
+    search_instruction: >-
+      Always run a Google Search before answering, even if you think you already
+      know the answer. Base your answer on the search results.
+    search_retries: 2              # if it still answers without searching, re-ask up to this many times
     resolve_redirects: true        # follow Google's redirect links to get real source URLs
     max_output_tokens: 8000
     pricing:
@@ -76,24 +81,16 @@ engines:
       output_tokens: 1500
       search_calls: 3
 
-# Cheap model with no web search, for helper tasks: generating queries,
-# sentiment scoring and writing the report summary. The first candidate whose
-# API key is set gets used.
+# One cheap model with no web search, used for sentiment scoring and
+# generate-queries. It uses the API key of the engine named here. If that key
+# is missing, sentiment is skipped with a warning and everything else still works.
+# Other options: {engine: perplexity, model: openai/gpt-6-luna},
+#                {engine: openai, model: gpt-6-luna},
+#                {engine: claude, model: claude-haiku-5-5}  (update pricing to match)
 utility_llm:
-  candidates:
-    - engine: perplexity           # Agent API serves third-party models with the Perplexity key
-      model: openai/gpt-6-luna
-      pricing: {input_per_mtok: 0.10, output_per_mtok: 0.50}
-    - engine: openai
-      model: gpt-6-luna
-      pricing: {input_per_mtok: 0.10, output_per_mtok: 0.50}
-    - engine: claude
-      model: claude-haiku-5-5
-      pricing: {input_per_mtok: 0.10, output_per_mtok: 0.50}
-      overrides: {effort: low, max_tokens: 4000, fallbacks: null}
-    - engine: gemini
-      model: gemini-3.8-flash
-      pricing: {input_per_mtok: 0.75, output_per_mtok: 3.75}
+  engine: gemini
+  model: gemini-3.8-flash
+  pricing: {input_per_mtok: 0.75, output_per_mtok: 3.75}
 
 run:
   concurrency: 3          # parallel requests per engine

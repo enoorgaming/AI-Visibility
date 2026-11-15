@@ -23,67 +23,67 @@ METRIC_DEFINITIONS = [
     ("Mention rate", "Share of AI answers that name the brand (any alias, case-insensitive, whole words)."),
     ("Average position", "When the brand is named, its rank among all tracked brands in that answer, by "
                          "order of first mention. 1 = named first."),
-    ("First-mention rate", "Share of all answers where the brand is the first brand named."),
     ("Share of voice", "The brand's mentions divided by mentions of all tracked brands (yours + competitors)."),
     ("Sentiment", "How the sentences naming the brand portray it (positive / neutral / negative), scored "
                   "by a small model."),
-    ("Own-site citation rate", "Share of answers that cite one of the brand's own domains as a source."),
     ("Top cited domains", "Websites the engines cite most. Each answer counts a domain once."),
     ("Opportunity gap", "A query where at least one engine names competitors but not the brand."),
 ]
 
 CSS = """
+/* Always light: a bright, playful palette (ignores the viewer's dark-mode setting). */
 :root {
   color-scheme: light;
-  --page: #f9f9f7; --surface: #fcfcfb; --border: rgba(11,11,11,0.10);
-  --ink: #0b0b0b; --ink-2: #52514e; --muted: #898781;
-  --grid: #e1e0d9; --track: #f0efec;
-  --accent: #2a78d6; --other: #c3c2b7; --negative: #e34948; --neutral-fill: #c3c2b7;
-  --seq-1: #cde2fb; --seq-2: #9ec5f4; --seq-3: #6da7ec; --seq-4: #3987e5; --seq-5: #256abf; --seq-6: #184f95;
-  --seq-fg-1: #0b0b0b; --seq-fg-2: #0b0b0b; --seq-fg-3: #0b0b0b; --seq-fg-4: #ffffff; --seq-fg-5: #ffffff; --seq-fg-6: #ffffff;
-  --note-bg: #fdf6e3; --note-border: #eda100;
-}
-@media (prefers-color-scheme: dark) {
-  :root:where(:not([data-theme="light"])) {
-    color-scheme: dark;
-    --page: #0d0d0d; --surface: #1a1a19; --border: rgba(255,255,255,0.10);
-    --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
-    --grid: #2c2c2a; --track: #2c2c2a;
-    --accent: #3987e5; --other: #5d5c58; --negative: #e66767; --neutral-fill: #898781;
-    --seq-1: #104281; --seq-2: #184f95; --seq-3: #1c5cab; --seq-4: #256abf; --seq-5: #2a78d6; --seq-6: #3987e5;
-    --seq-fg-1: #ffffff; --seq-fg-2: #ffffff; --seq-fg-3: #ffffff;
-    --note-bg: #2a2416; --note-border: #c98500;
-  }
-}
-:root[data-theme="dark"] {
-  color-scheme: dark;
-  --page: #0d0d0d; --surface: #1a1a19; --border: rgba(255,255,255,0.10);
-  --ink: #f0efec; --ink-2: #c3c2b7; --muted: #898781;
-  --grid: #2c2c2a; --track: #2c2c2a;
-  --accent: #3987e5; --other: #5d5c58; --negative: #e66767; --neutral-fill: #898781;
-  --seq-1: #104281; --seq-2: #184f95; --seq-3: #1c5cab; --seq-4: #256abf; --seq-5: #2a78d6; --seq-6: #3987e5;
-  --seq-fg-1: #ffffff; --seq-fg-2: #ffffff; --seq-fg-3: #ffffff;
-  --note-bg: #2a2416; --note-border: #c98500;
+  --page: #f6f4ff; --surface: #ffffff; --border: #e7e2fb;
+  --ink: #1d1b33; --ink-2: #4a4766; --muted: #8b88a6;
+  --grid: #ece8fb; --chip: #f3f1fc;
+  --violet: #6d4aff; --violet-deep: #5536e8; --pink: #ff4fa3; --coral: #ff6b6b;
+  --mint: #22c993; --teal: #12b5c4; --amber: #ffb020;
+  --accent: var(--violet); --other: #dcd6f3;
+  --positive: var(--mint); --neutral-fill: #e4e0f2; --negative: var(--coral);
+  --hero: linear-gradient(120deg, #5b3df5 0%, #a23cf2 42%, #ff4f8b 78%, #ff9a3d 100%);
 }
 * { box-sizing: border-box; }
 body { margin: 0; background: var(--page); color: var(--ink);
-       font: 15px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; }
-main { max-width: 1080px; margin: 0 auto; padding: 32px 16px 64px; }
-h1 { font-size: 28px; margin: 0 0 4px; }
-h2 { font-size: 19px; margin: 0 0 4px; }
+       font: 15px/1.55 system-ui, -apple-system, "Segoe UI", sans-serif; }
+main { max-width: 1080px; margin: 0 auto; padding: 24px 16px 64px; }
+h1 { font-size: 34px; line-height: 1.15; margin: 10px 0 8px; letter-spacing: -0.02em; }
+h2 { font-size: 19px; margin: 0 0 4px; letter-spacing: -0.01em; }
+h2::before { content: ""; display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 10px;
+             background: var(--hero); vertical-align: 1px; }
 .sub { color: var(--ink-2); margin: 0; }
 .muted { color: var(--muted); font-size: 13px; }
-section, .card { background: var(--surface); border: 1px solid var(--border); border-radius: 12px;
-                 padding: 20px; margin-top: 20px; }
-.note { background: var(--note-bg); border-left: 4px solid var(--note-border); border-radius: 8px;
+/* header banner */
+.hero { background: var(--hero); color: #ffffff; border-radius: 20px; padding: 28px 28px 24px;
+        box-shadow: 0 12px 32px -14px rgba(109, 74, 255, 0.55); }
+.hero .sub { color: rgba(255,255,255,0.92); font-size: 16px; }
+.hero .muted { color: rgba(255,255,255,0.82); margin: 6px 0 0; }
+.badge { display: inline-block; background: rgba(255,255,255,0.22); border: 1px solid rgba(255,255,255,0.4);
+         color: #ffffff; font-size: 12px; font-weight: 600; letter-spacing: 0.06em; text-transform: uppercase;
+         padding: 3px 10px; border-radius: 999px; }
+section, .card { background: var(--surface); border: 1px solid var(--border); border-radius: 16px;
+                 padding: 22px; margin-top: 20px; box-shadow: 0 2px 10px -6px rgba(29, 27, 51, 0.12); }
+.note { background: #fff6dc; border-left: 5px solid var(--amber); border-radius: 12px;
         padding: 12px 16px; margin-top: 20px; font-size: 14px; color: var(--ink-2); }
-.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 12px; margin-top: 20px; }
-.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 12px; padding: 16px; }
-.tile .label { color: var(--ink-2); font-size: 13px; }
-.tile .value { font-size: 30px; font-weight: 600; margin-top: 2px; }
+/* headline tiles: each gets its own colour stripe and number colour */
+.tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(170px, 100%), 1fr)); gap: 14px; margin-top: 20px; }
+.tile { background: var(--surface); border: 1px solid var(--border); border-radius: 16px; padding: 16px 18px;
+        border-top: 6px solid var(--tile, var(--violet)); box-shadow: 0 2px 10px -6px rgba(29, 27, 51, 0.12); }
+.tile:nth-child(4n+1) { --tile: var(--violet); --tile-ink: #5536e8; }
+.tile:nth-child(4n+2) { --tile: var(--teal);   --tile-ink: #0b7f8a; }
+.tile:nth-child(4n+3) { --tile: var(--pink);   --tile-ink: #c8246f; }
+.tile:nth-child(4n+4) { --tile: var(--amber);  --tile-ink: #b35c00; }
+.tile .label { color: var(--ink-2); font-size: 13px; font-weight: 600; }
+.tile .value { font-size: 34px; font-weight: 700; margin-top: 2px; color: var(--tile-ink); letter-spacing: -0.02em; }
 .tile .hint { color: var(--muted); font-size: 12px; }
-.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 20px; }
-.cols ol { margin: 8px 0 0; padding-left: 20px; } .cols li { margin-bottom: 8px; }
+/* findings & recommendations: numbered badges */
+.cols { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(300px, 100%), 1fr)); gap: 24px; }
+.cols ol { list-style: none; counter-reset: item; margin: 12px 0 0; padding: 0; }
+.cols li { counter-increment: item; position: relative; padding-left: 40px; margin-bottom: 12px; }
+.cols li::before { content: counter(item); position: absolute; left: 0; top: 0; width: 28px; height: 28px;
+                   border-radius: 50%; display: flex; align-items: center; justify-content: center;
+                   font-weight: 700; font-size: 14px; color: #ffffff; background: var(--violet); }
+.recs li::before { background: var(--mint); }
 .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(420px, 100%), 1fr)); gap: 0 20px; }
 .cols > *, .grid2 > *, .tiles > * { min-width: 0; }
 /* horizontal bar chart */
@@ -94,37 +94,40 @@ section, .card { background: var(--surface); border: 1px solid var(--border); bo
 .bar-label .tag { color: var(--muted); font-size: 12px; }
 .bar-track { position: relative; height: 24px; display: flex; align-items: center;
              border-left: 1px solid var(--grid); }
-.bar { height: 16px; border-radius: 0 4px 4px 0; background: var(--other); min-width: 2px; position: relative; }
-.bar.hl { background: var(--accent); }
-.bar-value { font-size: 13px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.bar { height: 16px; border-radius: 0 6px 6px 0; background: var(--other); min-width: 2px; position: relative; }
+.bar.hl { background: linear-gradient(90deg, var(--violet), #a06bff); }
+.domains .bar.hl { background: linear-gradient(90deg, var(--teal), #4fd1a5); }
+.bar-value { font-size: 13px; color: var(--ink-2); font-weight: 600; font-variant-numeric: tabular-nums; }
 .legend { display: flex; gap: 16px; flex-wrap: wrap; font-size: 13px; color: var(--ink-2); margin-top: 10px; }
-.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 2px; margin-right: 6px; vertical-align: baseline; }
+.swatch { display: inline-block; width: 10px; height: 10px; border-radius: 3px; margin-right: 6px; vertical-align: baseline; }
 /* tooltips: CSS-only, on hover and keyboard focus */
 [data-tip] { cursor: default; }
 [data-tip]:hover::after, [data-tip]:focus-visible::after {
   content: attr(data-tip); position: absolute; left: 0; bottom: calc(100% + 6px); z-index: 5;
-  background: var(--ink); color: var(--surface); font-size: 12px; line-height: 1.4; padding: 6px 8px;
-  border-radius: 6px; white-space: pre; pointer-events: none; }
+  background: var(--ink); color: #ffffff; font-size: 12px; line-height: 1.4; padding: 6px 8px;
+  border-radius: 8px; white-space: pre; pointer-events: none; }
 [data-tip]:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 /* segmented sentiment bar */
 .seg-row { display: grid; grid-template-columns: minmax(90px, 20%) 1fr; gap: 10px; align-items: center; margin-top: 8px; }
-.seg { display: flex; gap: 2px; height: 28px; }
-.seg > div { position: relative; border-radius: 4px; display: flex; align-items: center; padding-left: 6px;
-             font-size: 12px; font-weight: 600; color: #ffffff; min-width: 0; }
-.seg .pos { background: var(--accent); } .seg .neu { background: var(--neutral-fill); color: #0b0b0b; }
+.seg { display: flex; gap: 3px; height: 28px; }
+.seg > div { position: relative; border-radius: 8px; display: flex; align-items: center; padding-left: 8px;
+             font-size: 12px; font-weight: 700; color: var(--ink); min-width: 0; }
+.seg .pos { background: var(--positive); } .seg .neu { background: var(--neutral-fill); }
 .seg .neg { background: var(--negative); } .seg .unk { background: var(--grid); color: var(--ink-2); }
 /* tables */
-details { margin-top: 12px; } summary { cursor: pointer; color: var(--ink-2); font-size: 13px; }
+details { margin-top: 12px; } summary { cursor: pointer; color: var(--violet-deep); font-size: 13px; font-weight: 600; }
 .table-wrap { overflow-x: auto; margin-top: 10px; }
 table { border-collapse: collapse; width: 100%; font-size: 14px; }
-th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
-th { color: var(--ink-2); font-weight: 600; font-size: 13px; }
+th, td { text-align: left; padding: 9px 10px; border-bottom: 1px solid var(--grid); vertical-align: top; }
+th { color: var(--ink-2); font-weight: 700; font-size: 13px; background: #f4f1ff; }
 td.num, th.num { text-align: right; font-variant-numeric: tabular-nums; }
-.heat td.cell { text-align: center; font-variant-numeric: tabular-nums; border: 2px solid var(--surface); border-radius: 4px; }
-.chip { display: inline-block; padding: 1px 8px; border-radius: 999px; border: 1px solid var(--border);
+.chip { display: inline-block; padding: 1px 9px; border-radius: 999px; border: 1px solid var(--border); background: var(--chip);
         font-size: 12px; margin: 1px 2px 1px 0; color: var(--ink-2); white-space: nowrap; }
-.pos-cell { font-weight: 600; } .miss { color: var(--muted); }
-footer { color: var(--muted); font-size: 12px; margin-top: 24px; }
+.chip-miss { background: #ffe8e8; border-color: #ffc2c2; color: #b42323; font-weight: 600; }
+.chip-comp { background: #efeaff; border-color: #d9cfff; color: #5536e8; }
+.chip-src  { background: #e2f8f9; border-color: #b8eef1; color: #0b7280; }
+.pos-cell { font-weight: 700; color: var(--violet-deep); } .miss { color: var(--muted); }
+footer { color: var(--muted); font-size: 12px; margin-top: 24px; text-align: center; }
 """
 
 
@@ -140,7 +143,6 @@ def render_report(report: dict, summary: dict, costs: list[dict], out_path: Path
             _share_of_voice(report),
             "</div>",
             _sentiment(report),
-            _heatmap(report),
             _top_domains(report),
             _gaps_table(report),
             _query_grid(report),
@@ -215,7 +217,8 @@ def _header(r: dict) -> str:
     engines = ", ".join(f"{e} ({', '.join(r['models'][e])})" for e in r["engines"]) or "none"
     dates = f"{_date(r['date_range'][0])} to {_date(r['date_range'][1])}" if r["date_range"] else "n/a"
     return (
-        f"<header><h1>AI Visibility Report: {escape(r['brand'])}</h1>"
+        f'<header class="hero"><span class="badge">AI visibility · AEO report</span>'
+        f"<h1>AI Visibility Report: {escape(r['brand'])}</h1>"
         f'<p class="sub">{escape(r["category"])} · {r["queries_answered"]} queries · '
         f'{r["responses"]} answers · responses from {dates}</p>'
         f'<p class="muted">Engines: {escape(engines)}</p></header>'
@@ -229,7 +232,6 @@ def _tiles(r: dict) -> str:
         ("Mention rate", pct(o["mention_rate"]), f"{o['mentioned']} of {o['responses']} answers"),
         ("Average position", _fmt_pos(o["avg_position"]), "when mentioned (1 = first)"),
         ("Share of voice", pct(target["share_of_voice"] if target else None), "vs tracked competitors"),
-        ("First-mention rate", pct(o["first_mention_rate"]), "named before any competitor"),
         ("Opportunity gaps", str(len(r["opportunity_gaps"])), f"of {r['queries_answered']} queries"),
     ]
     cells = "".join(
@@ -241,13 +243,12 @@ def _tiles(r: dict) -> str:
 
 
 def _summary(s: dict) -> str:
-    source = "written by a model from the metrics" if s["source"].startswith("llm") else "generated from the metrics"
     findings = "".join(f"<li>{escape(f)}</li>" for f in s["findings"])
     recs = "".join(f"<li>{escape(x)}</li>" for x in s["recommendations"])
     return (
         f'<section><div class="cols"><div><h2>Key findings</h2><ol>{findings}</ol></div>'
-        f"<div><h2>Recommendations</h2><ol>{recs}</ol></div></div>"
-        f'<p class="muted">Summary {escape(source)}.</p></section>'
+        f'<div class="recs"><h2>Recommendations</h2><ol>{recs}</ol></div></div>'
+        '<p class="muted">Generated from the metrics by fixed rules.</p></section>'
     )
 
 
@@ -260,12 +261,11 @@ def _mention_by_engine(r: dict) -> str:
             "tip": f"{e}: {r['brand']} named in {m['mentioned']} of {m['responses']} answers\n"
                    f"Avg position {_fmt_pos(m['avg_position'])}",
         })
-        data.append([e, m["responses"], m["mentioned"], pct(m["mention_rate"]), _fmt_pos(m["avg_position"]),
-                     pct(m["first_mention_rate"]), pct(m["own_site_cited_rate"])])
+        data.append([e, m["responses"], m["mentioned"], pct(m["mention_rate"]), _fmt_pos(m["avg_position"])])
     return (
         f'<section><h2>Mention rate by engine</h2><p class="sub">Share of answers that name {escape(r["brand"])}</p>'
         f"{_bar_chart(rows, 1.0)}"
-        f"{_data_view(['Engine', 'Answers', 'Mentioned', 'Mention rate', 'Avg position', 'First-mention', 'Own site cited'], data, {1, 2, 3, 4, 5, 6})}"
+        f"{_data_view(['Engine', 'Answers', 'Mentioned', 'Mention rate', 'Avg position'], data, {1, 2, 3, 4})}"
         "</section>"
     )
 
@@ -318,7 +318,7 @@ def _sentiment(r: dict) -> str:
         body = "".join(rows_html)
     legend = (
         '<div class="legend">'
-        '<span><span class="swatch" style="background:var(--accent)"></span>Positive</span>'
+        '<span><span class="swatch" style="background:var(--positive)"></span>Positive</span>'
         '<span><span class="swatch" style="background:var(--neutral-fill)"></span>Neutral</span>'
         '<span><span class="swatch" style="background:var(--negative)"></span>Negative</span></div>'
     )
@@ -327,39 +327,6 @@ def _sentiment(r: dict) -> str:
         '<p class="sub">How the sentences naming the brand portray it</p>'
         f"{legend}{body}{_data_view(['Engine', 'Positive', 'Neutral', 'Negative', 'Unscored'], data, {1, 2, 3, 4})}"
         "</section>"
-    )
-
-
-def _heat_color(rate: float | None) -> tuple[str, str]:
-    """Sequential blue ramp: darker = mentioned more often. Returns (background, text colour)."""
-    if rate is None:
-        return "transparent", "var(--muted)"
-    if rate == 0:
-        return "var(--track)", "var(--muted)"
-    step = min(6, 1 + int(rate * 6))
-    return f"var(--seq-{step})", f"var(--seq-fg-{step})"
-
-
-def _heatmap(r: dict) -> str:
-    engines = r["engines"]
-    if not engines:
-        return ""
-    head = "".join(f'<th class="num">{escape(e)}</th>' for e in engines)
-    rows = []
-    for row in r["share_of_voice"]:  # same order as the share-of-voice chart
-        name = row["brand"]
-        cells = []
-        for e in engines:
-            rate = r["brand_engine_matrix"][name][e]
-            bg, fg = _heat_color(rate)
-            cells.append(f'<td class="cell" style="background:{bg};color:{fg}">{pct(rate)}</td>')
-        label = f"<strong>{escape(name)}</strong>" if row["is_target"] else escape(name)
-        rows.append(f"<tr><td>{label}</td>{''.join(cells)}</tr>")
-    return (
-        '<section><h2>Mention rate by brand and engine</h2>'
-        '<p class="sub">Share of each engine\'s answers that name each brand. Darker = more often.</p>'
-        f'<div class="table-wrap"><table class="heat"><thead><tr><th>Brand</th>{head}</tr></thead>'
-        f'<tbody>{"".join(rows)}</tbody></table></div></section>'
     )
 
 
@@ -375,7 +342,7 @@ def _top_domains(r: dict) -> str:
     } for d in domains]
     data = [[d["domain"], d["owner"] or "", d["responses"], pct(d["share"]), ", ".join(d["engines"])] for d in domains]
     return (
-        '<section><h2>Top cited sources</h2>'
+        '<section class="domains"><h2>Top cited sources</h2>'
         '<p class="sub">Websites the engines cite most, by number of answers citing them. '
         'Brand-owned sites are tagged.</p>'
         f"{_bar_chart(rows, top)}"
@@ -384,8 +351,9 @@ def _top_domains(r: dict) -> str:
     )
 
 
-def _chips(items: list[str]) -> str:
-    return "".join(f'<span class="chip">{escape(i)}</span>' for i in items) or '<span class="miss">none</span>'
+def _chips(items: list[str], kind: str = "") -> str:
+    cls = f"chip chip-{kind}" if kind else "chip"
+    return "".join(f'<span class="{cls}">{escape(i)}</span>' for i in items) or '<span class="miss">none</span>'
 
 
 def _gaps_table(r: dict) -> str:
@@ -399,9 +367,9 @@ def _gaps_table(r: dict) -> str:
                     if g["prompted_competitors"] else "")
         rows.append([
             f"{escape(g['query'])}{prompted}",
-            f"{_chips(g['engines_missing'])}<div class=\"muted\">{len(g['engines_missing'])} of {g['engines_answered']}</div>",
-            _chips(g["competitors"]),
-            _chips(g["top_domains"]),
+            f"{_chips(g['engines_missing'], 'miss')}<div class=\"muted\">{len(g['engines_missing'])} of {g['engines_answered']}</div>",
+            _chips(g["competitors"], "comp"),
+            _chips(g["top_domains"], "src"),
         ])
     return (
         f'<section><h2>Opportunity gaps</h2><p class="sub">Queries where competitors are named but '

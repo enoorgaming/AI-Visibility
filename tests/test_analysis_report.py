@@ -6,7 +6,7 @@ from analysis.pipeline import analyze_project
 from analysis.sentiment import parse_sentiment
 from core.config import load_project, load_settings
 from core.storage import Store
-from engines import Citation, EngineResponse
+from engines import ENGINE_CLASSES, Citation, EngineResponse
 from reports.html_report import render_report
 from reports.summary import rule_based_summary
 
@@ -70,7 +70,6 @@ def test_metrics_report_and_html(tmp_path, monkeypatch):
     pplx, gem = report["per_engine"]["perplexity"], report["per_engine"]["gemini"]
     assert pplx["mention_rate"] == 2 / 3 and pplx["avg_position"] == 1.5
     assert gem["mention_rate"] == 1 / 3 and gem["avg_position"] == 2
-    assert report["overall"]["own_site_cited_rate"] == 1 / 6
 
     sov = {row["brand"]: row for row in report["share_of_voice"]}
     assert sov["myHQ"]["responses_mentioning"] == 3
@@ -90,3 +89,15 @@ def test_metrics_report_and_html(tmp_path, monkeypatch):
     assert "can differ" in html  # API vs consumer-app caveat
     assert "Opportunity gaps" in html and "reddit.com" in html
     assert "<script" not in html and "http-equiv" not in html  # self-contained, no JS
+
+
+def test_sentiment_skipped_with_warning_when_utility_key_missing(tmp_path, monkeypatch):
+    monkeypatch.delenv(ENGINE_CLASSES[load_settings()["utility_llm"]["engine"]].env_key, raising=False)
+    proj = load_project("myhq")
+    proj.queries = proj.queries[:3]
+    store = Store(tmp_path / "t.db")
+    _seed(store, proj)
+    warnings = []
+    report, _, spent = asyncio.run(analyze_project(store, proj, load_settings(), warn=warnings.append))
+    assert report["responses"] == 6 and spent == 0
+    assert warnings and "Skipping sentiment" in warnings[0]

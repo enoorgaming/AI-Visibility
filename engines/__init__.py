@@ -26,21 +26,12 @@ def has_key(engine_name: str) -> bool:
     return bool(cls and os.getenv(cls.env_key, "").strip())
 
 
-def _make(cls: type[Engine], cfg: dict, api_key: str, location: dict | None, run: dict) -> Engine:
-    return cls(
-        cfg,
-        api_key,
-        location=location,
-        timeout=run.get("timeout_seconds", 120),
-        max_retries=run.get("max_retries", 3),
-    )
+def _make(cls: type[Engine], cfg: dict, api_key: str, run: dict) -> Engine:
+    return cls(cfg, api_key, timeout=run.get("timeout_seconds", 120), max_retries=run.get("max_retries", 3))
 
 
 def load_engines(
-    settings: dict,
-    names: list[str] | None,
-    location: dict | None,
-    require_key: bool = True,
+    settings: dict, names: list[str] | None, require_key: bool = True
 ) -> tuple[list[Engine], list[str]]:
     """Create the engines that are requested, enabled, and have an API key.
 
@@ -66,24 +57,20 @@ def load_engines(
                 warnings.append(f"Skipping '{name}': {cls.env_key} is not set in .env")
                 continue
             warnings.append(f"'{name}' has no API key ({cls.env_key}); showing estimate only")
-        engines.append(_make(cls, cfg, api_key, location, run))
+        engines.append(_make(cls, cfg, api_key, run))
     return engines, warnings
 
 
 def build_utility_engine(settings: dict) -> Engine:
-    """A cheap model with no web search, for helper tasks (query generation, sentiment, summary).
+    """The one cheap model (no web search) used for sentiment and query generation.
 
-    Uses the first candidate in settings.yaml whose API key is set.
+    Configured under `utility_llm` in settings.yaml. Raises EngineError if its key is missing.
     """
-    candidates = settings["utility_llm"]["candidates"]
-    for cand in candidates:
-        cls = ENGINE_CLASSES[cand["engine"]]
-        api_key = os.getenv(cls.env_key, "").strip()
-        if not api_key:
-            continue
-        cfg = copy.deepcopy(settings["engines"][cand["engine"]])
-        cfg.update(cand.get("overrides") or {})
-        cfg.update(model=cand["model"], pricing=cand.get("pricing", {}), web_search=False)
-        return _make(cls, cfg, api_key, None, settings.get("run", {}))
-    keys = ", ".join(sorted({ENGINE_CLASSES[c["engine"]].env_key for c in candidates}))
-    raise EngineError(f"No API key for any utility model. Set one of: {keys}")
+    util = settings["utility_llm"]
+    cls = ENGINE_CLASSES[util["engine"]]
+    api_key = os.getenv(cls.env_key, "").strip()
+    if not api_key:
+        raise EngineError(f"{cls.env_key} is not set in .env (needed for the utility model {util['model']})")
+    cfg = copy.deepcopy(settings["engines"][util["engine"]])
+    cfg.update(model=util["model"], pricing=util.get("pricing", {}), web_search=False)
+    return _make(cls, cfg, api_key, settings.get("run", {}))

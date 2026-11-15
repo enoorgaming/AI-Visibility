@@ -24,7 +24,6 @@ import anthropic
 from .base import Citation, Engine, EngineError, EngineResponse
 
 WEB_SEARCH_TOOL = "web_search_20260209"  # current version for Opus 5.5 / Sonnet 5.5
-FALLBACK_BETA = "server-side-fallback-2026-07-01"
 MAX_CONTINUATIONS = 3
 
 
@@ -59,17 +58,9 @@ class ClaudeEngine(Engine):
             tool: dict = {"type": WEB_SEARCH_TOOL, "name": "web_search"}
             if self.config.get("max_searches"):
                 tool["max_uses"] = self.config["max_searches"]
-            location = _location(self.location)
-            if location:
-                tool["user_location"] = location
             params["tools"] = [tool]
         if self.config.get("effort"):
             params["output_config"] = {"effort": self.config["effort"]}
-        if self.config.get("fallbacks"):
-            # If a safety classifier declines, the API retries on a fallback model
-            # within the same call instead of returning an empty refusal.
-            params["betas"] = [FALLBACK_BETA]
-            params["fallbacks"] = self.config["fallbacks"]
         if instructions:
             params["system"] = instructions
         return params
@@ -80,7 +71,7 @@ class ClaudeEngine(Engine):
         started = time.perf_counter()
         try:
             for _ in range(MAX_CONTINUATIONS + 1):
-                message = await self.client.beta.messages.create(**params)
+                message = await self.client.messages.create(**params)
                 turns.append(message.to_dict())
                 if message.stop_reason != "pause_turn":
                     break
@@ -156,11 +147,3 @@ class ClaudeEngine(Engine):
         if self._client is not None:
             await self._client.close()
         await super().aclose()
-
-
-def _location(loc: dict | None) -> dict | None:
-    """Claude wants {"type": "approximate", city, region, country, timezone}."""
-    if not loc:
-        return None
-    fields = {k: loc[k] for k in ("city", "region", "country", "timezone") if loc.get(k)}
-    return {"type": "approximate", **fields} if fields else None

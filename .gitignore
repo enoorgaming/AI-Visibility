@@ -1,9 +1,8 @@
 # Secrets
 .env
 
-# Local data: SQLite DBs, CSV exports, generated reports
+# Local data: SQLite DBs and generated reports
 data/*.db
-data/exports/
 reports/output/
 
 .venv/

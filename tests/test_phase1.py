@@ -5,7 +5,7 @@ Run with:  py -m pytest -q
 import asyncio
 
 from core.config import load_project, load_settings
-from core.query_generator import merge_queries, parse_queries
+from core.query_generator import build_prompt, merge_queries, parse_queries
 from core.runner import execute, plan_jobs
 from core.storage import Store
 from engines.perplexity import PerplexityEngine
@@ -14,7 +14,7 @@ from tests.fixtures import PERPLEXITY as SAMPLE_RESPONSE
 
 def make_engine(**overrides) -> PerplexityEngine:
     cfg = load_settings()["engines"]["perplexity"] | overrides
-    return PerplexityEngine(cfg, api_key="test", location={"country": "IN", "city": "Bangalore", "timezone": "Asia/Kolkata"})
+    return PerplexityEngine(cfg, api_key="test")
 
 
 def test_parse_response_extracts_text_citations_and_cost():
@@ -39,11 +39,10 @@ def test_cost_falls_back_to_price_table_when_api_reports_none():
     assert resp.cost_usd == 0.25  # input_per_mtok in settings.yaml
 
 
-def test_request_body_enables_web_search_with_supported_location_fields():
+def test_request_body_enables_web_search():
     body = make_engine().build_request("best coworking in Bangalore")
     assert body["model"] == "perplexity/sonar"
-    assert body["tools"][0]["type"] == "web_search"
-    assert body["tools"][0]["user_location"] == {"country": "IN", "city": "Bangalore"}  # no timezone
+    assert body["tools"] == [{"type": "web_search", "search_type": "web"}]
     assert "tools" not in make_engine(web_search=False).build_request("hi")
 
 
@@ -53,34 +52,30 @@ def test_cache_key_changes_with_model_but_not_whitespace_or_case():
     assert engine.cache_key("best coworking") != make_engine(model="other").cache_key("best coworking")
 
 
-def test_cached_queries_are_skipped_unless_refresh(tmp_path):
+def test_cached_queries_are_skipped(tmp_path):
     store = Store(tmp_path / "t.db")
     engine = make_engine()
     resp = engine.parse_response("q1", SAMPLE_RESPONSE)
     store.save_response(store.start_run(["perplexity"]), engine.cache_key("q1"), resp)
 
-    jobs, stats = plan_jobs([engine], ["q1", "q2"], store, refresh=False)
+    jobs, stats = plan_jobs([engine], ["q1", "q2"], store)
     assert [j.query for j in jobs] == ["q2"] and stats["perplexity"].cached == 1
 
-    jobs, _ = plan_jobs([engine], ["q1", "q2"], store, refresh=True)
-    assert len(jobs) == 2
 
-
-def test_execute_saves_responses_and_exports_csv(tmp_path):
+def test_execute_saves_responses(tmp_path):
     class FakeEngine(PerplexityEngine):
         async def ask(self, query, instructions=None):
             return self.parse_response(query, SAMPLE_RESPONSE)
 
     store = Store(tmp_path / "t.db")
     engine = FakeEngine(load_settings()["engines"]["perplexity"], api_key="x")
-    jobs, stats = plan_jobs([engine], ["q1", "q2"], store, refresh=False)
+    jobs, stats = plan_jobs([engine], ["q1", "q2"], store)
     asyncio.run(execute(jobs, store, store.start_run(["perplexity"]), stats, 2, lambda *a: None))
 
     assert stats["perplexity"].called == 2
     assert round(stats["perplexity"].cost_usd, 4) == 0.0098
     assert len(store.latest_responses()) == 2
-    responses_csv, citations_csv = store.export_csv(tmp_path, "t")
-    assert "example.com" in citations_csv.read_text(encoding="utf-8-sig")
+    assert "example.com" in [c["domain"] for c in store.citations_for([1])[1]]
 
 
 def test_project_config_loads():
@@ -96,3 +91,13 @@ def test_generated_queries_parsing_drops_brand_mentions_and_dupes():
     text = 'Here you go:\n["Best coworking in Indiranagar?", "Is myHQ good?", "Day pass prices"]'
     assert parse_queries(text, proj) == ["Best coworking in Indiranagar?", "Day pass prices"]
     assert merge_queries(["Day pass prices"], ["day pass prices", "new one"]) == ["Day pass prices", "new one"]
+
+
+def test_query_prompt_is_industry_neutral():
+    proj = load_project("myhq")
+    proj.category = "CRM software for small businesses"
+    prompt = build_prompt(proj, 15).lower()
+    assert "crm software for small businesses" in prompt
+    for coworking_word in ("team size", "neighbourhood", "amenities", "contract length"):
+        assert coworking_word not in prompt
+    assert '"myhq"' in prompt and "never mention" in prompt  # brand rule kept

@@ -45,16 +45,16 @@ class EngineStats:
 
 
 def plan_jobs(
-    engines: list[Engine], queries: list[str], store: Store, refresh: bool
+    engines: list[Engine], queries: list[str], store: Store
 ) -> tuple[list[Job], dict[str, EngineStats]]:
-    """Return the calls to make (skipping cached ones unless refresh=True)."""
+    """Return the calls to make. Queries that already have a stored answer are skipped."""
     jobs: list[Job] = []
     stats = {e.name: EngineStats() for e in engines}
     for engine in engines:
         for query in queries:
             key = engine.cache_key(query)
             stats[engine.name].planned += 1
-            if not refresh and store.is_cached(key):
+            if store.is_cached(key):
                 stats[engine.name].cached += 1
             else:
                 jobs.append(Job(engine, query, key))

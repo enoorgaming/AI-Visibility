@@ -9,22 +9,11 @@ brand:
     - myHQ
     - myHQ by ANAROCK
     - myhq.in
-  # Your own websites. Used to measure how often engines cite you directly.
+  # Your own websites. Used to tag your sites in the "top cited sources" chart.
   domains:
     - myhq.in
 
 category: coworking spaces in Bangalore
-
-# Optional. Each engine uses the fields it supports (city/region/country for
-# Perplexity, OpenAI and Claude; latitude/longitude for Gemini). This makes
-# answers closer to what a buyer in this city would see. Delete to disable.
-location:
-  country: IN
-  region: Karnataka
-  city: Bangalore
-  timezone: Asia/Kolkata
-  latitude: 12.9716
-  longitude: 77.5946
 
 competitors:
   - name: WeWork
@@ -62,3 +51,13 @@ queries:
   - Where can I book a meeting room by the hour in Bangalore?
   - Coworking spaces near HSR Layout with good internet and parking
   - How much does a dedicated desk cost in a Bangalore coworking space?
+  - best coworking spaces in bangalore for early stage startups
+  - affordable hot desk options near HSR Layout or Koramangala under 6000 a month with 24/7 access
+  - Can you recommend a quiet coworking space in Indiranagar where I can just buy a day pass or book a desk for 2-3 days a week?
+  - WeWork vs BHIVE in Bangalore - which one offers better value for money and community vibe?
+  - How much does a dedicated private cabin for a team of 10 cost in Bangalore coworking spaces? Breakdown by area like Whitefield vs CBD.
+  - Looking for enterprise managed office spaces in Bangalore for a 50-person remote-first tech team. Needs private meeting rooms and good IT infrastructure.
+  - coworking space bangalore with best parking and reliable internet reviews
+  - cheaper alternatives to WeWork in Bengaluru that still have decent coffee and modern interiors
+  - I'm a freelancer tired of working from cafes in Bangalore. What are good flexible shared workspaces with high-speed internet and phone booths for calls?
+  - 'Which coworking brand has the largest network of branches across Bangalore if I need multi-location access: Awfis or 91springboard?'

@@ -15,10 +15,13 @@ assistant (ChatGPT, Perplexity, Gemini, Claude) while researching: {category}.
 
 Cover a mix of intents:
 - discovery ("best ...", "top ...")
-- specific needs (team size, budget, neighbourhood, amenities, contract length)
+- specific needs and situations that matter for this category (e.g. buyer
+  type, size, budget, use case, location if relevant, must-have features)
 - pricing and cost comparisons
 - trust and reviews
 - comparisons and alternatives
+
+Make the needs fit "{category}" specifically; don't assume any particular industry.
 
 Rules:
 - Write them the way a real person types: vary the length, tone and detail.

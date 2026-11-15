@@ -1,14 +1,18 @@
 # AI Visibility Tracker
 
-Measures how a brand shows up in AI-generated answers. This is the core of
-**Answer Engine Optimization (AEO)**. The tool:
+Measures how a brand shows up in AI-generated answers, the core of **Answer Engine
+Optimization (AEO)**. It does three things:
 
-1. sends buyer-style questions ("best coworking space in Bangalore for a 10-person team?")
-   to **Perplexity, ChatGPT (OpenAI), Claude and Gemini**, each with web search turned on
-2. records whether your brand is mentioned, how prominently, which competitors appear,
-   and which websites the engines cite
-3. produces a self-contained **HTML report** with charts, 3 key findings, 3 recommendations,
-   and the list of "opportunity gap" queries where competitors appear and you don't
+1. **Asks 4 AI engines buyer questions.** Perplexity, ChatGPT (OpenAI), Claude and Gemini,
+   each with web search on (e.g. "best coworking space in Bangalore for a 10-person team?").
+2. **Turns the answers into marketing metrics.** Mention rate, position vs competitors, share
+   of voice, sentiment, top cited sources, and **opportunity gaps**: questions where
+   competitors are recommended but your brand isn't.
+3. **Produces a report with spend controls.** A single HTML file with charts, 3 key findings
+   and 3 recommendations. Costs are previewed before a run, answers are cached, and the actual
+   cost is printed after every run.
+
+It works for any company: each brand is one YAML config file.
 
 ## Setup
 
@@ -33,12 +37,13 @@ ANTHROPIC_API_KEY=sk-ant-...    # https://platform.claude.com/settings/keys
 GEMINI_API_KEY=...              # https://aistudio.google.com/apikey
 ```
 
-Engines without a key are **skipped with a warning**, so you can add keys one at a
-time. `py AI_Visibility.py status` shows which keys are picked up. `.env` is git-ignored.
+Engines without a key are **skipped with a warning**, so you can add keys one at a time.
+`py AI_Visibility.py status` shows which keys are picked up. `.env` is git-ignored.
 
-Helper tasks (query generation, sentiment, report summary) use a **cheap model**. The
-tool picks the first one you have a key for: Perplexity → OpenAI → Claude → Gemini
-(see `utility_llm` in `config/settings.yaml`).
+Sentiment scoring and `generate-queries` use **one cheap utility model**, set under
+`utility_llm` in `config/settings.yaml` (default: `gemini-3.8-flash`, using the Gemini key, so
+one Gemini key runs the whole tool). If its key is missing, sentiment is skipped with a warning
+and everything else still works.
 
 ## Usage
 
@@ -49,37 +54,47 @@ py AI_Visibility.py run --dry-run
 # 2. Try it cheaply: first 2 queries, one engine
 py AI_Visibility.py run --max-queries 2 --engines perplexity
 
-# 3. Full run. Already-answered queries come from the cache (free).
+# 3. Full run. Queries that already have an answer are reused from the cache (free).
 py AI_Visibility.py run
 
 # 4. Analyse and build the HTML report (reports/output/myhq_report_<date>.html)
 py AI_Visibility.py report
 ```
 
+Or do it all in one command (generate questions, ask the engines, build the report):
+
+```bash
+py AI_Visibility.py full --project snabbit --generate 12 --engines gemini
+```
+
+`--generate N` is optional: leave it out to use the questions already in the config. Gemini is
+asked to always search; if it still answers without searching, the tool re-asks it up to twice and
+otherwise marks the question as failed (not saved), so only searched answers reach the report.
+
 Other commands:
 
 ```bash
-py AI_Visibility.py analyze                    # metrics in the terminal (+ reports/output/myhq_metrics.json)
-py AI_Visibility.py generate-queries --count 18   # add 18 realistic buyer queries to the config
-py AI_Visibility.py run --refresh              # force fresh answers (costs money; old ones are kept)
-py AI_Visibility.py report --no-sentiment --no-llm-summary   # zero-cost report
-py AI_Visibility.py status                     # keys, models, all-time spend
-py AI_Visibility.py export                     # CSV of every response and citation
+py AI_Visibility.py analyze                      # metrics in the terminal (+ reports/output/myhq_metrics.json)
+py AI_Visibility.py generate-queries --count 18  # add realistic buyer queries to the config
+py AI_Visibility.py report --no-sentiment        # zero-cost report (skips sentiment scoring)
+py AI_Visibility.py status                       # keys, models, all-time spend
 ```
 
-`--project myhq` is the default. Pass `--project <name>` for other configs in `config/projects/`.
+`--project myhq` is the default. Pass `--project <name>` to use another file in `config/projects/`.
 
-### Cost tracking
+### Spend controls
 
-Every run prints the **actual cost per engine**, and `status` shows the all-time total.
+- **`--dry-run`** shows planned calls and estimated cost per engine before anything is sent.
+- **`--max-queries N`** and **`--engines a,b`** cap how much a run can spend.
+- **Caching:** if an answer already exists for an engine + model + question, it is reused,
+  never paid for twice. Changing the model in settings counts as a new question.
+- **Per-run cost table:** every run prints new calls, cached, failed, tokens and cost per engine.
+  Perplexity reports exact costs. The other engines are estimated from their token and
+  search counts using the prices in `config/settings.yaml` (marked `*`).
 
-- **Perplexity** reports the exact cost of every call, and that's what we store.
-- **OpenAI, Claude, Gemini** don't return a cost. We compute it from the tokens and
-  search calls they report, using the prices in `config/settings.yaml` (marked `*`).
-
-Typical cost per query (estimates in `settings.yaml`): Perplexity ~$0.005, Gemini
-~$0.05, OpenAI ~$0.05, Claude Opus ~$0.11. So 20 queries × 4 engines ≈ $4. Switch
-Claude to `claude-sonnet-5-5` in settings to roughly halve its cost.
+Typical cost per query (estimates in `settings.yaml`): Perplexity ~$0.005, Gemini ~$0.05,
+OpenAI ~$0.05, Claude Opus ~$0.11. So 8 queries × 4 engines ≈ $1.72. Switch Claude to
+`claude-sonnet-5-5` in settings to roughly halve its cost.
 
 ## Configuring a project
 
@@ -87,17 +102,20 @@ Each project is one YAML file in `config/projects/`. Copy `myhq.yaml` to start a
 
 | Key           | Meaning |
 |---------------|---------|
-| `brand`       | Your brand `name`, `aliases` (every spelling that counts as a mention) and `domains` (your websites) |
-| `category`    | What buyers are shopping for, e.g. "coworking spaces in Bangalore" |
-| `location`    | Optional city/region/country/timezone/lat-long. Each engine uses the fields it supports |
+| `brand`       | Your brand `name`, `aliases` (every spelling that counts as a mention) and `domains` (your websites, tagged in the cited-sources chart) |
+| `category`    | What buyers are shopping for, e.g. "coworking spaces in Bangalore" or "CRM software for small businesses" |
 | `competitors` | Known competitors, each with aliases and (optional) domains |
-| `queries`     | The buyer-intent questions to ask. Edit freely |
+| `queries`     | The buyer questions to ask. Edit freely, or run `generate-queries` |
 
-Aliases are matched **case-insensitively as whole words**. Avoid aliases that are
-ordinary words (e.g. "We Work" would match "where we work").
+Aliases are matched **case-insensitively as whole words**. Avoid aliases that are ordinary
+words (e.g. "We Work" would match "where we work").
 
-Engine models, endpoints and prices live in `config/settings.yaml`, because they change
-often. Change a model there and the cache treats that engine's old answers as stale.
+`generate-queries` works for any category. It writes a mix of buyer intents (discovery,
+specific needs, pricing, reviews, comparisons), never names your brand (that would inflate
+mention rate), names competitors in at most 3 questions, skips duplicates, and keeps the
+comments in your YAML file.
+
+Engine models, endpoints and prices live in `config/settings.yaml`, because they change often.
 
 ## Metrics
 
@@ -105,24 +123,24 @@ often. Change a model there and the cache treats that engine's old answers as st
 |--------|---------|
 | **Mention rate** | % of answers that name your brand (any alias) |
 | **Average position** | When named, your rank among all tracked brands in that answer, by order of first mention (1 = named first) |
-| **First-mention rate** | % of all answers where you're the first brand named |
 | **Share of voice** | Your mentions ÷ mentions of all tracked brands (you + competitors) |
-| **Sentiment** | Whether the sentences naming you are positive, neutral or negative (cheap model; only those sentences are sent) |
-| **Own-site citation rate** | % of answers citing one of your `domains` as a source |
-| **Top cited domains** | Websites engines cite most (each answer counts a domain once). These are the sites to get featured on |
-| **Opportunity gaps** | Queries where at least one engine names competitors but not you. These are the highest-priority fixes |
+| **Sentiment** | Whether the sentences naming you are positive, neutral or negative (cheap model; only those sentences are sent; scored once and cached) |
+| **Top cited domains** | The websites engines cite most (each answer counts a domain once). These are the sites to get featured on |
+| **Opportunity gaps** | Questions where at least one engine names competitors but not you, with the sites it cited. These are the highest-priority fixes |
 
-Analysis uses the **latest answer** for each (engine, query) currently in the config.
-Mentions are computed fresh every time (free), so alias edits apply immediately.
-Sentiment scores are cached in SQLite, so they're paid for once.
+Analysis uses the stored answer for each (engine, question) currently in the config. Mention
+detection is plain text matching (free and repeatable), so alias edits apply immediately.
+
+The report's 3 findings and 3 recommendations come from **fixed rules** applied to these
+metrics, so every sentence can be traced to a number.
 
 ## How it works
 
 ```
-AI_Visibility.py            CLI (typer): run, analyze, report, generate-queries, status, export
+AI_Visibility.py            CLI (typer): run, analyze, report, generate-queries, status
 config/
-  settings.yaml             engine models, endpoints, prices, cheap utility model
-  projects/myhq.yaml        brand, competitors, location, queries
+  settings.yaml             engine models, endpoints, prices, the utility model
+  projects/myhq.yaml        brand, competitors, queries
 engines/
   base.py                   Engine interface + EngineResponse/Citation shapes, retries
   perplexity.py             Perplexity Agent API + web_search tool
@@ -132,7 +150,7 @@ engines/
 core/
   config.py                 YAML → typed objects
   runner.py                 plans calls (cache check), runs them concurrently
-  storage.py                SQLite: runs, responses (raw JSON), citations, sentiments; CSV export
+  storage.py                SQLite: runs, responses (raw JSON), citations, sentiments
   query_generator.py        cheap-model query generation
 analysis/
   mentions.py               alias matching, mention order, snippets, domain ownership
@@ -140,11 +158,11 @@ analysis/
   metrics.py                per-engine + overall metrics, share of voice, domains, gaps
   pipeline.py               runs the three above in order
 reports/
-  summary.py                3 findings + 3 recommendations (rule-based, or LLM-worded)
+  summary.py                rule-based 3 findings + 3 recommendations
   html_report.py            self-contained HTML report (pure HTML/CSS, light + dark)
   output/                   generated reports (git-ignored)
 data/
-  myhq.db, exports/         SQLite database and CSV exports (git-ignored)
+  myhq.db                   SQLite database (git-ignored)
 tests/                      offline tests, run with `py -m pytest -q`
 ```
 
@@ -152,21 +170,15 @@ tests/                      offline tests, run with `py -m pytest -q`
 
 - **One interface, many engines.** Each provider converts its own response format into the
   same `EngineResponse` (answer text, citations, tokens, cost, raw JSON). Nothing downstream
-  knows which provider an answer came from. Adding an engine = one new file + one registry line.
-- **Caching.** Each answer is stored under a hash of *engine + model + query + search
-  settings*. Re-runs skip what's already answered unless you pass `--refresh`. Old answers
-  are never deleted, so you can track changes over time.
-- **Raw responses are kept.** The full JSON from every call is stored, so analysis can
-  be improved and re-run without paying for queries again.
-- **Cited vs retrieved sources.** Engines often retrieve 10+ pages but cite only a few.
-  We store both and flag which are actually cited (`cited_in_text`). Domain metrics use
-  cited sources, falling back to retrieved ones if an engine marks none.
-- **Deterministic first, LLM second.** Mention detection and all metrics are plain code
-  (free, repeatable, explainable). LLMs are only used where judgement is needed
-  (sentiment, the wording of the summary), and the summary falls back to rules if no key is set.
-- **Failure handling.** Rate limits and server errors are retried with exponential backoff.
-  Bad keys/parameters fail fast with the API's error message. A failed query is reported
-  and not cached, so the next run retries it.
+  knows which provider an answer came from.
+- **Cited vs retrieved sources.** Engines often look at 10+ pages but cite only a few. Both are
+  stored, with a flag for which were cited. Domain metrics use the cited ones, falling back to
+  retrieved ones if an engine marks none.
+- **Deterministic first.** Mention detection, all metrics and the findings/recommendations are
+  plain code: free, repeatable, explainable. An LLM is used only for sentiment.
+- **Failure handling.** Rate limits and server errors are retried with exponential backoff. Bad
+  keys or parameters fail fast with the API's error message. A failed query isn't cached, so the
+  next run retries it.
 
 ### Engines
 
@@ -177,26 +189,20 @@ tests/                      offline tests, run with `py -m pytest -q`
 | Claude     | Messages API via `anthropic` SDK, `web_search_20260209` tool | `web_search_result_location` citations on text blocks (cited) + `web_search_tool_result` (retrieved) |
 | Gemini     | `generateContent` with `google_search` grounding | `groundingChunks`; `groundingSupports` mark cited ones. Google redirect links are resolved to real URLs |
 
-Notes:
-- Perplexity ended support for its older Sonar Chat Completions API (`/v1/sonar`)
-  on 27 Sep 2026. This tool uses the replacement, the Agent API.
-- Claude runs with server-side `fallbacks: default`: if a safety classifier declines,
-  the API retries on a fallback model within the same call. Remove it in settings to disable.
+Perplexity ended support for its older Sonar Chat Completions API (`/v1/sonar`) on
+27 Sep 2026. This tool uses the replacement, the Agent API.
 
 ## Caveat
 
 API answers can differ from what people see in the consumer apps (ChatGPT, Perplexity,
-Claude, Gemini). Consumer apps add personalisation, memory, location and sometimes
-different models or system prompts. Treat these results as a consistent, repeatable
-**proxy** for AI visibility, not an exact replica. The report states this too.
+Claude, Gemini). Consumer apps add personalisation, memory, location and sometimes different
+models or system prompts. Treat these results as a consistent, repeatable **proxy** for AI
+visibility, not an exact replica. The report states this too.
 
-## Known untested points (no live keys yet)
+## Not yet verified live
 
-The request and response formats follow each provider's docs as of Nov 2026 and are
-covered by offline tests with documented response shapes. On the first live run, check:
-
-- Perplexity accepts `model: perplexity/sonar` together with the `web_search` tool and `user_location`
-- Gemini accepts `toolConfig.retrievalConfig.latLng` alongside `google_search` (delete
-  `latitude`/`longitude` from the project config if it returns a 400)
-- The "cited" count printed per answer is above 0 for each engine
-- Competitor `domains` in `myhq.yaml` are best guesses. Verify them
+Request and response formats follow each provider's docs (Nov 2026) and are covered by offline
+tests using documented response shapes, but no live API run has been done yet. On the first
+run, check that each engine's "cited" count per answer is above 0, and that Perplexity accepts
+`model: perplexity/sonar` with the `web_search` tool. Competitor `domains` in `myhq.yaml` are
+best guesses; verify them.

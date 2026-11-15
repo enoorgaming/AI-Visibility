@@ -47,11 +47,7 @@ class PerplexityEngine(Engine):
     def build_request(self, query: str, instructions: str | None = None) -> dict:
         body: dict = {"model": self.model, "input": query}
         if self.web_search:
-            tool: dict = {"type": "web_search", "search_type": self.config.get("search_type", "web")}
-            location = _location(self.location)
-            if location:
-                tool["user_location"] = location  # makes results local, like a real user's
-            body["tools"] = [tool]
+            body["tools"] = [{"type": "web_search", "search_type": self.config.get("search_type", "web")}]
         if self.config.get("max_output_tokens"):
             body["max_output_tokens"] = self.config["max_output_tokens"]
         if instructions:
@@ -105,17 +101,6 @@ class PerplexityEngine(Engine):
 
 
 # ---- parsing helpers -------------------------------------------------------
-
-
-def _location(loc: dict | None) -> dict | None:
-    """Perplexity accepts country/region/city, plus latitude/longitude together with country."""
-    if not loc:
-        return None
-    keys = ["country", "region", "city"]
-    if loc.get("latitude") is not None and loc.get("longitude") is not None:
-        keys += ["latitude", "longitude"]
-    return {k: loc[k] for k in keys if loc.get(k) is not None} or None
-
 
 def _message_parts(data: dict) -> list[dict]:
     """All 'output_text' content parts from 'message' items in the output."""

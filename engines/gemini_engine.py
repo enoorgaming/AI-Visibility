@@ -40,15 +40,19 @@ class GeminiEngine(Engine):
     name = "gemini"
     env_key = "GEMINI_API_KEY"
 
+    def cache_params(self) -> dict:
+        return {**super().cache_params(), "search_instruction": self._search_instruction()}
+
+    def _search_instruction(self) -> str | None:
+        # Gemini decides for itself whether to search, and often skips it for evergreen
+        # questions. This instruction (from settings.yaml) asks it to always search first.
+        return self.config.get("search_instruction") if self.web_search else None
+
     def build_request(self, query: str, instructions: str | None = None) -> dict:
         body: dict = {"contents": [{"role": "user", "parts": [{"text": query}]}]}
         if self.web_search:
             body["tools"] = [{"google_search": {}}]
-            loc = self.location or {}
-            if loc.get("latitude") is not None and loc.get("longitude") is not None:
-                body["toolConfig"] = {
-                    "retrievalConfig": {"latLng": {"latitude": loc["latitude"], "longitude": loc["longitude"]}}
-                }
+            instructions = instructions or self._search_instruction()
         if self.config.get("max_output_tokens"):
             body["generationConfig"] = {"maxOutputTokens": self.config["max_output_tokens"]}
         if instructions:
@@ -60,13 +64,24 @@ class GeminiEngine(Engine):
         url = f"{endpoint}/{self.model}:generateContent"
         headers = {"x-goog-api-key": self.api_key}
 
+        # Gemini sometimes answers from memory even when told to search. Those answers have
+        # no sources, so re-ask; if it never searches, fail (not cached, retried next run).
+        attempts = 1 + (self.config.get("search_retries", 2) if self.web_search else 0)
+        wasted = 0.0  # cost of answers we threw away for not searching
         started = time.perf_counter()
-        data = await self.post_json(url, headers, self.build_request(query, instructions))
-        latency_ms = int((time.perf_counter() - started) * 1000)
-
-        if not data.get("candidates"):
-            raise EngineError(f"Gemini returned no answer: {data.get('promptFeedback')}")
-        resp = self.parse_response(query, data, latency_ms)
+        for _ in range(attempts):
+            data = await self.post_json(url, headers, self.build_request(query, instructions))
+            if not data.get("candidates"):
+                raise EngineError(f"Gemini returned no answer: {data.get('promptFeedback')}")
+            resp = self.parse_response(query, data)
+            if not self.web_search or resp.citations:
+                break
+            wasted += resp.cost_usd
+        else:
+            raise EngineError(f"Gemini answered without searching {attempts} times (~${wasted:.4f} spent); "
+                              "not saved, will retry next run")
+        resp.cost_usd += wasted
+        resp.latency_ms = int((time.perf_counter() - started) * 1000)
         if self.config.get("resolve_redirects", True):
             await self._resolve_redirects(resp.citations)
         return resp

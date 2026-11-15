@@ -94,14 +94,12 @@ class Engine(ABC):
         self,
         config: dict,
         api_key: str,
-        location: dict | None = None,
         timeout: float = 120,
         max_retries: int = 3,
     ):
         self.config = config
         self.model: str = config["model"]
         self.api_key = api_key
-        self.location = location
         self.pricing = Pricing(**config.get("pricing", {}))
         self.timeout = timeout
         self.max_retries = max_retries
@@ -129,7 +127,7 @@ class Engine(ABC):
         Changing any of these (say, the model) produces a new cache key,
         so old answers stop counting as cache hits.
         """
-        return {"model": self.model, "location": self.location, "web_search": self.web_search}
+        return {"model": self.model, "web_search": self.web_search}
 
     def cache_key(self, query: str) -> str:
         normalised_query = " ".join(query.lower().split())

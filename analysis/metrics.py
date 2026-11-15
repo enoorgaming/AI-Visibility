@@ -63,20 +63,16 @@ def _rate(part: int, whole: int) -> float | None:
     return part / whole if whole else None
 
 
-def _engine_metrics(items: list[ResponseAnalysis], project: Project) -> dict:
-    brand = project.brand.name
+def _engine_metrics(items: list[ResponseAnalysis]) -> dict:
     mentioned = [a for a in items if a.mention.brand_mentioned]
     positions = [a.mention.brand_position for a in mentioned]
     sentiments = Counter(a.sentiment for a in mentioned if a.sentiment)
-    own_site_cited = sum(1 for a in items if any(domain_owner(d, project) == brand for d in a.cited_domains))
     return {
         "responses": len(items),
         "mentioned": len(mentioned),
         "mention_rate": _rate(len(mentioned), len(items)),
         "avg_position": mean(positions) if positions else None,
-        "first_mention_rate": _rate(sum(1 for p in positions if p == 1), len(items)),
         "sentiment": {label: sentiments.get(label, 0) for label in ("positive", "neutral", "negative", "unknown")},
-        "own_site_cited_rate": _rate(own_site_cited, len(items)),
         "avg_sources_cited": mean(len(a.cited_domains) for a in items) if items else None,
     }
 
@@ -105,15 +101,6 @@ def summarize(analyses: list[ResponseAnalysis], project: Project) -> dict:
         key=lambda row: row["responses_mentioning"],
         reverse=True,
     )
-
-    # ---- brand x engine mention-rate matrix
-    matrix = {
-        name: {
-            e: _rate(sum(1 for a in by_engine[e] if name in a.mention.brands_in_order), len(by_engine[e]))
-            for e in engines
-        }
-        for name in brand_names
-    }
 
     # ---- top cited domains (each response counts a domain once)
     domain_responses: Counter = Counter()
@@ -175,10 +162,9 @@ def summarize(analyses: list[ResponseAnalysis], project: Project) -> dict:
         "queries_answered": len(by_query),
         "responses": len(analyses),
         "date_range": [dates[0], dates[-1]] if dates else None,
-        "overall": _engine_metrics(analyses, project),
-        "per_engine": {e: _engine_metrics(by_engine[e], project) for e in engines},
+        "overall": _engine_metrics(analyses),
+        "per_engine": {e: _engine_metrics(by_engine[e]) for e in engines},
         "share_of_voice": share_of_voice,
-        "brand_engine_matrix": matrix,
         "top_domains": top_domains,
         "domain_owners": {d: o for d in domain_responses if (o := domain_owner(d, project))},
         "opportunity_gaps": gaps,

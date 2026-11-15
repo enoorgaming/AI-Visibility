@@ -1,0 +1,45 @@
+# Project config: Snabbit (instant house help app, India).
+# Run everything with:  py AI_Visibility.py full --project snabbit --generate 12 --engines gemini
+
+brand:
+  name: Snabbit
+  # Every spelling that should count as a mention. Matched case-insensitively
+  # as whole words, so avoid aliases that are ordinary words.
+  aliases:
+    - Snabbit
+    - snabbit.com
+  # Your own websites. Used to tag your sites in the "top cited sources" chart.
+  domains:
+    - snabbit.com
+
+category: instant house help and home cleaning services in Mumbai
+
+# Competitors and domains found via a search-grounded Gemini lookup (Nov 2026). Verify them.
+competitors:
+  - name: Urban Company
+    aliases: [Urban Company, UrbanClap, InstaHelp, Insta Help, Insta Maids]
+    domains: [urbancompany.com]
+  - name: Pronto
+    aliases: [Pronto, WithPronto]   # "pronto" is also an ordinary word; watch for false matches
+    domains: [withpronto.com]
+  - name: Broomees
+    aliases: [Broomees]
+    domains: [broomees.com]
+  - name: Doorush
+    aliases: [Doorush]
+    domains: [doorush.in]
+
+# Buyer-style questions. Filled in by `generate-queries` (or `full --generate N`).
+queries:
+  - best on demand maid apps in Mumbai for same day house cleaning
+  - My maid didn't show up today and I have guests coming over. Where can I get instant house help in Mumbai right now for dusting and utensils?
+  - Urban Company alternatives in Mumbai for quick 1 hour daily house cleaning
+  - how much does a same-day 2 BHK deep cleaning cost in Powai Mumbai? looking for budget options
+  - Are there any reliable platforms for police-verified instant house maids in Mumbai? Need someone safe for a female living alone in Bandra
+  - need someone to clean up my flat after a house party tomorrow morning in South Mumbai. Any app that sends cleaners on 30 to 45 mins notice?
+  - 'Broomees vs other on-demand maid services in Mumbai: which is better for urgent cooking and kitchen cleaning?'
+  - what is the standard hourly rate for last-minute house cleaning services in Mumbai?
+  - cheap instant bathroom and kitchen cleaning service near Andheri West
+  - Which app is best for backup maids in Mumbai when regular maid goes on sudden leave?
+  - Is Pronto or Doorush available in Mumbai for quick 15-30 minute household chores or should I look at local agencies?
+  - most reliable on demand house cleaning service in Navi Mumbai with good customer ratings
