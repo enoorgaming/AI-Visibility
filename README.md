@@ -14,6 +14,16 @@ Optimization (AEO)**. It does three things:
 
 It works for any company: each brand is one YAML config file.
 
+## Example output
+
+A real run for **myHQ** (coworking spaces in Bangalore): 18 buyer questions asked to Gemini with
+Google Search, about $0.85 in total.
+
+![AI Visibility Report for myHQ](examples/myhq_report_preview.png)
+
+Full report: [examples/myhq_report.html](examples/myhq_report.html). Download it and open it in
+a browser; GitHub shows HTML files as source code.
+
 ## Setup
 
 Requires Python 3.11 or newer.
