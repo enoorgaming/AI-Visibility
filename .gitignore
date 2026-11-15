@@ -1,0 +1,10 @@
+# Secrets
+.env
+
+# Local data: SQLite DBs, CSV exports, generated reports
+data/*.db
+data/exports/
+reports/output/
+
+.venv/
+.pytest_cache/

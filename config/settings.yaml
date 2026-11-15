@@ -1,0 +1,101 @@
+# Global engine settings, shared by every project.
+#
+# Model names, endpoints and prices change often. Keep them here, not in code.
+# Prices last checked against provider docs on 2026-11-12.
+#
+# `pricing` is in USD and used whenever the API doesn't report the cost itself
+# (only Perplexity does). `estimate` is only used by --dry-run.
+
+engines:
+  perplexity:
+    enabled: true
+    # Agent API: replaced Sonar Chat Completions (/v1/sonar) on 2026-09-27
+    endpoint: https://api.perplexity.ai/v1/agent
+    model: perplexity/sonar        # Perplexity's own search-tuned model
+    web_search: true
+    search_type: web               # "web" (full) or "fast" (cheaper, $1/1k searches)
+    max_output_tokens: 2000        # safety cap; typical answers are 300-900 tokens
+    pricing:
+      input_per_mtok: 0.25
+      output_per_mtok: 2.50
+      per_search_call: 0.0025      # $2.50 per 1,000 web_search calls
+    estimate:
+      input_tokens: 4000           # includes retrieved web content fed to the model
+      output_tokens: 700
+      search_calls: 1
+
+  openai:
+    enabled: true
+    endpoint: https://api.openai.com/v1/responses
+    # OpenAI recommends gpt-6-astra for web search ($10/$50 per 1M tokens).
+    # gpt-6-sol is 5x cheaper; switch here if you want the flagship.
+    model: gpt-6-sol
+    web_search: true
+    search_context_size: medium    # low | medium | high
+    reasoning_effort: null         # e.g. low / medium; null = model default
+    max_output_tokens: 8000        # reasoning tokens count toward this
+    pricing:
+      input_per_mtok: 2.00         # search content tokens are billed as input
+      output_per_mtok: 10.00
+      per_search_call: 0.010       # $10 per 1,000 web search calls
+    estimate:
+      input_tokens: 8000
+      output_tokens: 1500
+      search_calls: 2
+
+  claude:
+    enabled: true
+    model: claude-opus-5-5         # cheaper options: claude-sonnet-5-5 ($2/$10), claude-haiku-5-5 ($0.10/$0.50)
+    web_search: true               # uses the web_search_20260209 server tool
+    max_searches: 5                # cap on searches per answer
+    effort: medium                 # low | medium | high | xhigh | max
+    max_tokens: 16000
+    fallbacks: default             # on a safety refusal, retry on a fallback model in the same call
+    pricing:
+      input_per_mtok: 4.00         # search results are billed as input tokens
+      output_per_mtok: 20.00
+      per_search_call: 0.010       # $10 per 1,000 searches
+    estimate:
+      input_tokens: 15000
+      output_tokens: 1500
+      search_calls: 2
+
+  gemini:
+    enabled: true
+    endpoint: https://generativelanguage.googleapis.com/v1beta/models
+    model: gemini-3.8-flash
+    web_search: true               # Grounding with Google Search
+    resolve_redirects: true        # follow Google's redirect links to get real source URLs
+    max_output_tokens: 8000
+    pricing:
+      input_per_mtok: 0.75
+      output_per_mtok: 3.75        # thinking tokens are billed as output
+      per_search_call: 0.014       # $14 per 1,000 search queries (first 5,000/month free)
+    estimate:
+      input_tokens: 1500
+      output_tokens: 1500
+      search_calls: 3
+
+# Cheap model with no web search, for helper tasks: generating queries,
+# sentiment scoring and writing the report summary. The first candidate whose
+# API key is set gets used.
+utility_llm:
+  candidates:
+    - engine: perplexity           # Agent API serves third-party models with the Perplexity key
+      model: openai/gpt-6-luna
+      pricing: {input_per_mtok: 0.10, output_per_mtok: 0.50}
+    - engine: openai
+      model: gpt-6-luna
+      pricing: {input_per_mtok: 0.10, output_per_mtok: 0.50}
+    - engine: claude
+      model: claude-haiku-5-5
+      pricing: {input_per_mtok: 0.10, output_per_mtok: 0.50}
+      overrides: {effort: low, max_tokens: 4000, fallbacks: null}
+    - engine: gemini
+      model: gemini-3.8-flash
+      pricing: {input_per_mtok: 0.75, output_per_mtok: 3.75}
+
+run:
+  concurrency: 3          # parallel requests per engine
+  timeout_seconds: 180
+  max_retries: 3          # retries on 429 / 5xx with exponential backoff

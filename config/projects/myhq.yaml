@@ -1,0 +1,64 @@
+# Project config: one file per brand/category you want to track.
+# Run with:  py AI_Visibility.py run --project myhq
+
+brand:
+  name: myHQ
+  # Every spelling that should count as a mention. Matched case-insensitively
+  # as whole words, so avoid aliases that are ordinary words.
+  aliases:
+    - myHQ
+    - myHQ by ANAROCK
+    - myhq.in
+  # Your own websites. Used to measure how often engines cite you directly.
+  domains:
+    - myhq.in
+
+category: coworking spaces in Bangalore
+
+# Optional. Each engine uses the fields it supports (city/region/country for
+# Perplexity, OpenAI and Claude; latitude/longitude for Gemini). This makes
+# answers closer to what a buyer in this city would see. Delete to disable.
+location:
+  country: IN
+  region: Karnataka
+  city: Bangalore
+  timezone: Asia/Kolkata
+  latitude: 12.9716
+  longitude: 77.5946
+
+competitors:
+  - name: WeWork
+    aliases: [WeWork]          # not "We Work": that matches ordinary sentences
+    domains: [wework.co.in, wework.com]
+  - name: Awfis
+    aliases: [Awfis]
+    domains: [awfis.com]
+  - name: Smartworks
+    aliases: [Smartworks, Smart Works]
+    domains: [sworks.co.in]
+  - name: IndiQube
+    aliases: [IndiQube]
+    domains: [indiqube.com]
+  - name: 91springboard
+    aliases: [91springboard, 91 springboard]
+    domains: [91springboard.com]
+  - name: BHIVE
+    aliases: [BHIVE, BHIVE Workspace]
+    domains: [bhiveworkspace.com]
+  - name: Cowrks
+    aliases: [Cowrks]
+    domains: [cowrks.com]
+  - name: Innov8
+    aliases: [Innov8]
+    domains: [innov8.work]
+
+# Buyer-style questions. Edit freely, or run `generate-queries` to add more.
+queries:
+  - What are the best coworking spaces in Bangalore?
+  - Which coworking space in Bangalore is best for a startup team of 10 people?
+  - Cheapest coworking day pass options in Koramangala
+  - Best managed office space providers in Bangalore for a 50-seat team
+  - WeWork vs Awfis vs Smartworks in Bangalore, which is better value?
+  - Where can I book a meeting room by the hour in Bangalore?
+  - Coworking spaces near HSR Layout with good internet and parking
+  - How much does a dedicated desk cost in a Bangalore coworking space?
